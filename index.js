@@ -11,30 +11,41 @@ const google = new Google(
 );
 
 const app = express();
+const codeverifier = generateCodeVerifier();
+app.get("/login", async (req, res) => {
+  const authUrl = await google.createAuthorizationURL(
+    generateState(),
+    codeverifier,
+    ["profile", "email"]
+  );
 
-app.get("/google", async (req, res) => {
-  const state = generateState();
-  const codeVerifier = generateCodeVerifier();
-
-  const url = await google.createAuthorizationURL(state, codeVerifier);
-
-  // store state verifier as cookie
-  res.cookie("state", state, {
-    secure: true, // set to false in localhost
-    path: "/",
-    httpOnly: true,
-    maxAge: 60 * 10, // 10 min
-  });
-  // store code verifier as cookie
-  res.cookie("code_verifier", codeVerifier, {
-    secure: true, // set to false in localhost
-    path: "/",
-    httpOnly: true,
-    maxAge: 60 * 10, // 10 min
-  });
-  res.redirect(url);
+  res.redirect(authUrl);
 });
 
+app.get("/google", async (req, res) => {
+  const code = req.query.code;
+
+  try {
+    const tokens = await google.validateAuthorizationCode(code, codeverifier);
+    // Save the user and tokens to your database
+    // Set session cookies or tokens as needed
+
+    const response = await fetch(
+      "https://openidconnect.googleapis.com/v1/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${tokens.accessToken}`,
+        },
+      }
+    );
+    const user = await response.json();
+    console.log(user);
+    res.send("Logged in successfully");
+  } catch (error) {
+    console.error("Authentication error:", error);
+    res.redirect("/login");
+  }
+});
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
 });
