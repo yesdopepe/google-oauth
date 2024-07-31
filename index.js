@@ -16,7 +16,9 @@ app.get("/login", async (req, res) => {
   const authUrl = await google.createAuthorizationURL(
     generateState(),
     codeverifier,
-    ["profile", "email"]
+    {
+      scopes: ["openid", "email", "profile"],
+    }
   );
 
   res.redirect(authUrl);
@@ -29,9 +31,9 @@ app.get("/google", async (req, res) => {
     const tokens = await google.validateAuthorizationCode(code, codeverifier);
     // Save the user and tokens to your database
     // Set session cookies or tokens as needed
-
+    console.log(tokens);
     const response = await fetch(
-      "https://openidconnect.googleapis.com/v1/userinfo",
+      "https://www.googleapis.com/oauth2/v3/userinfo",
       {
         headers: {
           Authorization: `Bearer ${tokens.accessToken}`,
